@@ -11,13 +11,19 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <string.h>
-#include "cyc_task.h"
+#include "task.h"
 
 void timer_thread(union sigval sigval_value);
 void timer_task(timer_t *timer, int msec, int priorty);
 
 timer_t timer_1ms, timer_5ms, timer_10ms;
-timer_event *event;
+Event *event;
+
+//common tasks
+static OsTaskStackType OsTaskStack[OS_TEMPTASKMAXNUM];
+static uint8 u8s_OsTask_StartItr;
+static uint8 u8s_OsTask_EndItr;
+static uint8 u8s_OsTask_OverflowFlg;
 
 /******************************************************
 *******************************************************
@@ -25,7 +31,7 @@ timer_event *event;
 	@timer_event:	if policy = SCHED_OTHER,priority = 0
 
 *******************************************************/
-void timer_envent_callback(timer_event *ev)
+void envent_callback(Event *ev)
 {
 	event = NULL;
 	if(ev)
@@ -145,6 +151,95 @@ void timer_thread(union sigval sigval_value)
 
 		default:
 			break;
+	}
+}
+
+/******************************************************
+*******************************************************
+	parameter:	void
+	describe:	Init
+*******************************************************/
+
+void OsStack_Init()
+{
+	u8s_OsTask_StartItr = 0;
+	u8s_OsTask_EndItr = 0;
+	u8s_OsTask_OverflowFlg = (uint8)OFF;
+}
+
+/******************************************************
+*******************************************************
+	parameter:	@pt_task:callback pointer
+	describe:	add taske
+*******************************************************/
+uint8 OsStack_AddTempTask( void * pt_task)
+{
+	uint8 u8t_result;
+	u8t_result = (uint8)1;
+	if ( u8s_OsTask_OverflowFlg == (uint8)OFF)
+	{
+		OsTaskStack[u8s_OsTask_EndItr].pt_task_run = pt_task;
+		u8s_OsTask_EndItr++;
+		if (u8s_OsTask_EndItr == OS_TEMPTASKMAXNUM )
+		{
+			u8s_OsTask_EndItr = (uint8)0;
+		}
+		if ( u8s_OsTask_EndItr == u8s_OsTask_StartItr )
+		{
+			u8s_OsTask_OverflowFlg = (uint8)ON;
+		}
+		u8t_result = (uint8)0;
+	}
+	else
+	{
+
+	}
+	return u8t_result;
+}
+
+/******************************************************
+*******************************************************
+	parameter:	void
+	describe:	run taske
+*******************************************************/
+void OsStack_Run()
+{
+	if ( u8s_OsTask_StartItr != u8s_OsTask_EndItr )
+	{
+		OsTaskStack[u8s_OsTask_StartItr].pt_task_run();
+		u8s_OsTask_StartItr++;
+		if (u8s_OsTask_StartItr == OS_TEMPTASKMAXNUM )
+		{
+			u8s_OsTask_StartItr = (uint8)0;
+		}
+		if ( u8s_OsTask_OverflowFlg == (uint8)ON )
+		{
+			u8s_OsTask_OverflowFlg = (uint8)OFF;
+		}
+	}
+}
+
+/******************************************************
+*******************************************************
+	parameter:	void 
+	describe:	creat task by thread
+*******************************************************/
+void task_creat()
+{
+	if(event->envent_common)
+	{
+		pthread_t tid;
+		int ret = pthread_create(&tid, NULL, event->envent_common, NULL);
+		if(ret < 0)
+		{
+			printf("pthread_create faile!\n");
+			return;
+		}		
+		pthread_detach(tid);	
+	}
+	else
+	{
+		printf("event->envent_common is NULL.please init event->envent_common befor this!\n");
 	}
 }
 

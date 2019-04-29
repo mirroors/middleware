@@ -5,17 +5,31 @@
     > Created Time: Tue 23 Apr 2019 10:28:26 PM PDT
  ************************************************************************/
 //void timer_task(timer_t *timer, int msec, int priorty);
+#include "platform_types.h"
 
 #define _1ms 1
 #define _5ms 5
 #define _10ms 10
 
-typedef struct timer_event
+#define OS_TEMPTASKMAXNUM 10
+
+typedef struct Event
 {
 	void (*envent_1ms)(int);
 	void (*envent_5ms)(int);
 	void (*envent_10ms)(int);
-}timer_event;
+	void (*envent_common)(void);
+}Event;
 
-extern void timer_envent_callback(timer_event *ev);
+typedef struct
+{
+    void (* pt_task_run)(void);
+}OsTaskStackType;
+
+extern void envent_callback(Event *ev);
 extern void cycle_task(int msec, int priorty);
+
+extern uint8 OsStack_AddTempTask( void * pt_task);
+extern void OsStack_Init();
+extern void OsStack_Run();
+extern void task_creat();
